@@ -112,7 +112,7 @@ if [ -z $directadmin_usermail ]; then
 fi
 
 if $BIN/v-list-users | grep -q -w $directadmin_user; then
-	echo "User alredy exist on your server, maybe on Hestia or in your /etc/passwd"
+	echo "User alredy exist on your server, maybe on Hestiacp or in your /etc/passwd"
 	echo "**"
 	echo "Grep your /etc/passwd"
 	grep -q -w $directadmin_user /etc/passwd
@@ -120,12 +120,13 @@ if $BIN/v-list-users | grep -q -w $directadmin_user; then
 	delete_tmp
 	exit 21
 else
-	echo "Generate random password for $directadmin_user and create Vestacp Account ..."
-	sk_password=$(generate_password)
-	$BIN/v-add-user $directadmin_user $sk_password $directadmin_usermail $hestia_package $directadmin_user $directadmin_user
+	echo "Generate random password for $directadmin_user and create Hestiacp Account ..."
+	new_password=$(generate_password)
+	# @TODO Checked till here
+	$BIN/v-add-user $directadmin_user $new_password $directadmin_usermail $hestia_package $directadmin_user $directadmin_user
 	if [ $? != 0 ]; then
 		tput setaf 2
-		echo "Stop Working... Cant create user...if is fresh install of vestacp try reboot or reopen session check bug https://bugs.vestacp.com/issues/138"
+		echo "Stop Working... Cant create user...if is fresh install of Hestiacp try reboot or reopen session check bug https://bugs.vestacp.com/issues/138"
 		tput sgr0
 		delete_tmp
 		exit 4
