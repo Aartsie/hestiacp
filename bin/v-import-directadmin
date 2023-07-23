@@ -93,12 +93,12 @@ if file $backup_file | grep -q -c "gzip compressed data,"; then
 		tput sgr0
 	else
 		echo "Error on backup extraction, check your file, try extract it manually"
-		sk_delete_tmp
+		delete_tmp
 		exit 1
 	fi
 else
 	echo "Error 3 not-gzip - no standard gziped backup provided of file not installed ( Try yum install file, or apt-get install file )"
-	sk_delete_tmp
+	delete_tmp
 	exit 3
 fi
 cd /root/${tmp_dir}/
@@ -117,7 +117,7 @@ if $BIN/v-list-users | grep -q -w $directadmin_user; then
 	echo "Grep your /etc/passwd"
 	grep -q -w $directadmin_user /etc/passwd
 	echo "**"
-	sk_delete_tmp
+	delete_tmp
 	exit 21
 else
 	echo "Generate random password for $directadmin_user and create Vestacp Account ..."
@@ -127,7 +127,7 @@ else
 		tput setaf 2
 		echo "Stop Working... Cant create user...if is fresh install of vestacp try reboot or reopen session check bug https://bugs.vestacp.com/issues/138"
 		tput sgr0
-		sk_delete_tmp
+		delete_tmp
 		exit 4
 	fi
 fi
@@ -263,7 +263,7 @@ if [ -e sk_restored_domains ]; then
 		fi
 	done
 fi
-sk_delete_tmp
+delete_tmp
 echo "Account $directadmin_user restored"
 echo "Report eny errores in skamasle.com or in vesta forum ( official forum thread ) "
 echo "Or in twitter @skamasle"
