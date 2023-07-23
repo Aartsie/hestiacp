@@ -12,10 +12,18 @@
 # This script is provided whitout any warranty
 # Run at your own risk
 # Version 0.2
-# This script restore backups from DA to VestaCP
+# This script restore backups from DA to Hestiacp
 # This script can restore Datases, databases user and passwords, mails and domains.
 
-# Turn this to 1 if you want get domains and paths from apache_owened_list 
+# shellcheck source=/usr/local/hestia/func/main.sh
+source $HESTIA/func/main.sh
+# shellcheck source=/etc/hestiacp/hestia.conf
+source /etc/hestiacp/hestia.conf
+# load config file
+source_conf "$HESTIA/conf/hestia.conf"
+
+
+# Turn this to 1 if you want get domains and paths from apache_owened_list
 # Turn int to 2 if you want to get domains dir "domains" and set public_html as default
 sk_get_dom=1
 if [ ! -e /usr/bin/rsync ] || [ ! -e /usr/bin/file ] ; then
@@ -31,46 +39,60 @@ if [ ! -e /usr/bin/rsync ] || [ ! -e /usr/bin/file ] ; then
 	exit 3
 fi
 # Put this to 0 if you want use bash -x to debug it
-sk_debug=1
-sk_vesta_package=default
+debug=1
+hestia_package=default
+tmp_dir=tmp_dir
 b=backup
 d=domains
-#
-# Only for gen_password but I dont like it, a lot of lt
-# maybe will use it for orther functions :)
-source /usr/local/vesta/func/main.sh 
+
+if [ -f "$1" ]; then
+	directadmin_backup="$1"
+fi
+if [ -n "$2" ]; then
+	mx="$2"
+fi
+if [ -z "$BACKUP_TEMP" ]; then
+	BACKUP_TEMP=$BACKUP
+else
+	echo "File does not exists"
+	exit 1
+fi
+
+# Creating temporary directory
+tmpdir=$(mktemp -p "$BACKUP_TEMP" -d)
+
 sk_file=$1
-sk_tmp=sk_tmp
-sk_delete_tmp () {
-echo "Removing tmp files"
-rm -rf /root/${sk_tmp}
+
+delete_tmp () {
+	echo "Removing tmp files"
+	rm -rf /root/${tmp_dir}
 }
-sk_file_name=$(ls $sk_file)
+
 tput setaf 2
 echo "Checking provided file..."
-tput sgr0 
+tput sgr0
 if file $sk_file |grep -q -c "gzip compressed data," ; then
 	tput setaf 2
 	echo "OK - Gziped File"
-	tput sgr0 	
-	if [ ! -d /root/${sk_tmp} ]; then
+	tput sgr0
+	if [ ! -d /root/${tmp_dir} ]; then
 		echo "Creating tmp.."
-		mkdir /root/${sk_tmp}
+		mkdir /root/${tmp_dir}
 	fi
 	echo "Extracting backup..."
-	if [ "$sk_debug" != 0 ]; then
-		tar xzvf $sk_file -C /root/${sk_tmp} 2>&1 |
+	if [ "$debug" != 0 ]; then
+		tar xzvf $sk_file -C /root/${tmp_dir} 2>&1 |
      		   while read sk_extracted_file; do
        				ex=$((ex+1))
        				echo -en "wait... $ex files extracted\r"
        		   done
 		else
-			tar xzf $sk_file -C /root/${sk_tmp}
+			tar xzf $sk_file -C /root/${tmp_dir}
 	fi
 		if [ $? -eq 0 ];then
 			tput setaf 2
 			echo "Backup extracted whitout errors..."
-			tput sgr0 
+			tput sgr0
 		else
 			echo "Error on backup extraction, check your file, try extract it manually"
 			sk_delete_tmp
@@ -81,7 +103,7 @@ if file $sk_file |grep -q -c "gzip compressed data," ; then
 	sk_delete_tmp
 	exit 3
 fi
-cd /root/${sk_tmp}/
+cd /root/${tmp_dir}/
 sk_importer_in=$(pwd)
 echo "Access tmp directory $sk_importer_in"
 echo "Get prefix/user..."
@@ -102,7 +124,7 @@ if /usr/local/vesta/bin/v-list-users | grep -q -w $sk_da_user ;then
 else
 	echo "Generate random password for $sk_da_user and create Vestacp Account ..."
 	sk_password=$(generate_password)
-	/usr/local/vesta/bin/v-add-user $sk_da_user $sk_password $sk_da_usermail $sk_vesta_package $sk_da_user $sk_da_user
+	/usr/local/vesta/bin/v-add-user $sk_da_user $sk_password $sk_da_usermail $hestia_package $sk_da_user $sk_da_user
 	if [ $? != 0 ]; then
 		tput setaf 2
 		echo "Stop Working... Cant create user...if is fresh install of vestacp try reboot or reopen session check bug https://bugs.vestacp.com/issues/138"
@@ -118,7 +140,7 @@ done
 # start whit databases
 tput setaf 2
 echo "Start Whit Databases"
-tput sgr0 
+tput sgr0
 echo "Get local databases"
 mysql -e "SHOW DATABASES" > server_dbs
 sk_da_db_user_list=$(ls -1 backup/ |grep ".conf")
@@ -134,7 +156,7 @@ do
 	if [ $? == "1" ]; then
 			tput setaf 2
 			echo " Create and restore ${db} "
-			tput sgr0 
+			tput sgr0
 			mysql -e "CREATE DATABASE $db"
 			mysql ${db} < backup/${db}.sql
 			echo "Add $db to vestacp"
@@ -156,7 +178,7 @@ fi
 # Start whit domains
 tput setaf 2
 echo "Start Whit Domains"
-tput sgr0 
+tput sgr0
 if [ "$sk_get_dom" = 1 ];then
 	sk_da_domain_list=$(grep "=G" ${b}/apache_owned_files.list |grep -v public_html |grep -v private_html)
 else
@@ -166,15 +188,15 @@ for sk_da_dom in $sk_da_domain_list
 	do
 		if [ "$sk_get_dom" = 1 ];then
 			sk_da_dom=${sk_da_dom:: -2}
-		fi			
+		fi
 		tput setaf 2
 		echo "Add $sk_da_dom if not exists"
-		tput sgr0 
-		/usr/local/vesta/bin/v-add-domain ${sk_da_user} $sk_da_dom 
+		tput sgr0
+		/usr/local/vesta/bin/v-add-domain ${sk_da_user} $sk_da_dom
 		if [ "$?" = "4" ]; then
 			tput setaf 4
 			echo "Domain $sk_da_dom alredy added in some account, skip..."
-			tput sgr0 
+			tput sgr0
 		elif [ -d /home/${sk_da_user}/web/${sk_da_dom} ];then
 			echo "Domain $sk_da_dom added, restoring files"
 			echo $sk_da_dom >> sk_restored_domains
@@ -185,9 +207,9 @@ for sk_da_dom in $sk_da_domain_list
 			else
 				sk_da_do_path=${sk_da_dom}/public_html
 			fi
-			if [ "$sk_debug" != 0 ]; then
+			if [ "$debug" != 0 ]; then
 				rm -f /home/${sk_da_user}/web/${sk_da_dom}/public_html/index.html
-				rsync -av ${d}/${sk_da_do_path}/ /home/${sk_da_user}/web/${sk_da_dom}/public_html 2>&1 | 
+				rsync -av ${d}/${sk_da_do_path}/ /home/${sk_da_user}/web/${sk_da_dom}/public_html 2>&1 |
     			while read sk_file_dm; do
        			 	sk_sync=$((sk_sync+1))
        			 	echo -en "-- $sk_sync restored files\r"
@@ -207,7 +229,7 @@ echo " "
 echo "Domains restored!"
 tput setaf 2
 	echo "Start restoring mails"
-tput sgr0 
+tput sgr0
 function sk_da_restore_imap_pass () {
 if [ -d /etc/exim ]; then
 	EXIM=/etc/exim
@@ -223,7 +245,7 @@ echo "Password for $1@$2 restored"
 }
 if [ -e sk_restored_domains ]; then
 cat sk_restored_domains | while read sk_da_mail_domain
-	do	
+	do
 		if [ "$(ls -A ${b}/${sk_da_mail_domain}/email/data/imap/)" ]; then
 			tput setaf 2
 			echo "Found Imap for ${sk_da_mail_domain}"
@@ -231,8 +253,8 @@ cat sk_restored_domains | while read sk_da_mail_domain
 				ls -1 ${b}/${sk_da_mail_domain}/email/data/imap/ | while read sk_da_imap
 					do
 						/usr/local/vesta/bin/v-add-mail-account $sk_da_user $sk_da_mail_domain $sk_da_imap temp
-						if [ "$sk_debug" != 0 ]; then
-							rsync -av ${b}/${sk_da_mail_domain}/email/data/imap/${sk_da_imap}/Maildir/ /home/${sk_da_user}/mail/${sk_da_mail_domain}/${sk_da_imap} 2>&1 | 
+						if [ "$debug" != 0 ]; then
+							rsync -av ${b}/${sk_da_mail_domain}/email/data/imap/${sk_da_imap}/Maildir/ /home/${sk_da_user}/mail/${sk_da_mail_domain}/${sk_da_imap} 2>&1 |
     						while read sk_file_dm
 							do
        			 				sk_sync=$((sk_sync+1))
