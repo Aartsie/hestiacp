@@ -97,7 +97,7 @@ if file $backup_file | grep -q -c "gzip compressed data,"; then
 		exit 1
 	fi
 else
-	echo "Error 3 not-gzip - no stantard gziped backup provided of file not installed ( Try yum install file, or apt-get install file )"
+	echo "Error 3 not-gzip - no standard gziped backup provided of file not installed ( Try yum install file, or apt-get install file )"
 	sk_delete_tmp
 	exit 3
 fi
