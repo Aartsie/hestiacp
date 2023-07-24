@@ -119,7 +119,6 @@ fi
 
 echo "Generate random password for $directadmin_user and create Hestiacp Account ..."
 new_password=$(generate_password)
-# @TODO Checked till here
 # $BIN/v-add-user $directadmin_user $new_password $directadmin_usermail $hestia_package
 if [ "$?" -ne 0 ]; then
 	echo "Unable to create user"
@@ -137,17 +136,17 @@ tput sgr0
 
 echo "Get local databases"
 mysql -e "SHOW DATABASES" >server_dbs
-da_db_user_list=$(ls -1 backup/ | grep ".conf")
+da_db_list=$(ls -1 backup/ | grep ".conf")
 function run_da_db() {
-	for da_db_u in $da_db_user_list; do
+	for da_db in $da_db_list; do
 		
 		# Substring expresion -5: substring expression < 0
 		# userdb=$(echo $da_db_u |sed "s/.conf//")
-		userdb=${da_db_u::-5}
-		if [ -e "backup/${userdb}.sql" ]; then
+		database_name=${da_db::-5}
+		if [ -e "backup/${database_name}.sql" ]; then
 
 			#Get the database name
-			db=$(grep db_collation backup/${da_db_u} | tr '&' '\n ' | grep SCHEMA_NAME | cut -d "=" -f 2)
+			db=$(grep db_collation backup/${da_db} | tr '&' '\n ' | grep SCHEMA_NAME | cut -d "=" -f 2)
 
 			#Get all the users of the database
 			while IFS= read -r line;
@@ -162,9 +161,11 @@ function run_da_db() {
 					echo "DB: $db"
 					echo "udb: $db_user"
 					echo "Password: ${md5}"
+
+						# echo "DB='$db' DBUSER='$userdb' MD5='$end_user_pass' HOST='localhost' TYPE='mysql' CHARSET='UTF8' U_DISK='0' SUSPENDED='no' TIME='$time' DATE='$data'" >> /usr/local/hestia/data/users/$directadmin_user/db.conf
 				fi
 
-			done < "backup/${da_db_u}"
+			done < "backup/${da_db}"
 
 			
 			# grep -w $db server_dbs
@@ -185,7 +186,7 @@ function run_da_db() {
 	$BIN/v-rebuild-databases $directadmin_user
 }
 
-if [[ -z $da_db_user_list ]]; then
+if [[ -z $da_db_list ]]; then
 	echo "No database found"
 else
 	run_da_db
