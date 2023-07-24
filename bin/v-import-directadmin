@@ -120,52 +120,79 @@ fi
 echo "Generate random password for $directadmin_user and create Hestiacp Account ..."
 new_password=$(generate_password)
 # @TODO Checked till here
-$BIN/v-add-user $directadmin_user $new_password $directadmin_usermail $hestia_package
+# $BIN/v-add-user $directadmin_user $new_password $directadmin_usermail $hestia_package
 if [ "$?" -ne 0 ]; then
 	echo "Unable to create user"
 	exit 1
 fi
 
-exit 0
-for sk_ex1 in crontab ticket user; do
-	mv backup/${sk_ex1}.conf backup/${sk_ex1}
-done
+
+
+# Restore databases
+mysql -e "SET GLOBAL max_allowed_packet=1073741824;"
 # start whit databases
 tput setaf 2
 echo "Start Whit Databases"
 tput sgr0
+
 echo "Get local databases"
 mysql -e "SHOW DATABASES" >server_dbs
-sk_da_db_user_list=$(ls -1 backup/ | grep ".conf")
-function sk_run_da_db() {
-	for sk_da_db_u in $sk_da_db_user_list; do
+da_db_user_list=$(ls -1 backup/ | grep ".conf")
+function run_da_db() {
+	for da_db_u in $da_db_user_list; do
+		
 		# Substring expresion -5: substring expression < 0
-		# userdb=$(echo $sk_da_db_u |sed "s/.conf//")
-		userdb=${sk_da_db_u::-5}
-		md5=$(grep $userdb ${b}/${sk_da_db_u} | head -n 1 | tr '&' '\n ' | grep passwd | cut -d "=" -f 2)
-		db=$(grep db_collation ${b}/${sk_da_db_u} | tr '&' '\n ' | grep SCHEMA_NAME | cut -d "=" -f 2)
-		grep -w $db server_dbs
-		if [ $? == "1" ]; then
-			tput setaf 2
-			echo " Create and restore ${db} "
-			tput sgr0
-			mysql -e "CREATE DATABASE $db"
-			mysql ${db} <backup/${db}.sql
-			echo "Add $db to vestacp"
-			echo "DB='$db' DBUSER='$userdb' MD5='$md5' HOST='localhost' TYPE='mysql' CHARSET='UTF8' U_DISK='0' SUSPENDED='no' TIME='$TIME' DATE='$DATE'" >>/usr/local/vesta/data/users/${directadmin_user}/db.conf
-		else
-			echo "Error: Cant restore database $db alredy exists in mysql server"
+		# userdb=$(echo $da_db_u |sed "s/.conf//")
+		userdb=${da_db_u::-5}
+		if [ -e "backup/${userdb}.sql" ]; then
+
+			#Get the database name
+			db=$(grep db_collation backup/${da_db_u} | tr '&' '\n ' | grep SCHEMA_NAME | cut -d "=" -f 2)
+
+			#Get all the users of the database
+			while IFS= read -r line;
+			do
+
+				selectdb_line=$( echo $line | grep passwd );
+				if [ ! -z "$selectdb_line" ]; then
+
+					db_user=$(echo $selectdb_line | tr '&' '\n ' | grep ${directadmin_user} | cut -d "=" -f 1)
+					md5=$(echo $selectdb_line | tr '&' '\n ' | grep passwd | cut -d "=" -f 2)
+					
+					echo "DB: $db"
+					echo "udb: $db_user"
+					echo "Password: ${md5}"
+				fi
+
+			done < "backup/${da_db_u}"
+
+			
+			# grep -w $db server_dbs
+			# if [ $? == "1" ]; then
+			# 	tput setaf 2
+			# 	echo " Create and restore ${db} "
+			# 	tput sgr0
+			# 	mysql -e "CREATE DATABASE $db"
+			# 	mysql ${db} <backup/${db}.sql
+			# 	echo "Add $db to vestacp"
+			# 	echo "DB='$db' DBUSER='$userdb' MD5='$md5' HOST='localhost' TYPE='mysql' CHARSET='UTF8' U_DISK='0' SUSPENDED='no' TIME='$TIME' DATE='$DATE'" >>/usr/local/vesta/data/users/${directadmin_user}/db.conf
+			# else
+			# 	echo "Error: Cant restore database $db alredy exists in mysql server"
+			# fi
 		fi
 	done
 	echo "Fix passwords and users"
 	$BIN/v-rebuild-databases $directadmin_user
 }
 
-if [[ -z $sk_da_db_user_list ]]; then
+if [[ -z $da_db_user_list ]]; then
 	echo "No database found"
 else
-	sk_run_da_db
+	run_da_db
 fi
+
+delete_tmp
+exit 0
 
 # Start whit domains
 tput setaf 2
