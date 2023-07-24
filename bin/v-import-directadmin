@@ -104,34 +104,29 @@ fi
 cd /root/${tmp_dir}/
 main_dir=$(pwd)
 echo "Access tmp directory $main_dir"
-echo "Get prefix/user..."
 directadmin_user=$(grep username backup/user.conf | cut -d "=" -f 2)
 directadmin_usermail=$(grep email backup/user.conf | cut -d "=" -f 2 | grep @)
+echo "Get User: $directadmin_user"
 if [ -z $directadmin_usermail ]; then
 	directadmin_usermail=$(grep domain backup/user.conf | cut -d "=" -f 2 | head -n 1)
 fi
 
-if $BIN/v-list-users | grep -q -w $directadmin_user; then
-	echo "User alredy exist on your server, maybe on Hestiacp or in your /etc/passwd"
-	echo "**"
-	echo "Grep your /etc/passwd"
-	grep -q -w $directadmin_user /etc/passwd
-	echo "**"
+check_sysuser=$(cut -f 1 -d : /etc/passwd | grep "^$directadmin_user$")
+if [ -n "$check_sysuser" ] || [ -e "$HESTIA/data/users/$directadmin_user" ]; then
 	delete_tmp
-	exit 21
-else
-	echo "Generate random password for $directadmin_user and create Hestiacp Account ..."
-	new_password=$(generate_password)
-	# @TODO Checked till here
-	$BIN/v-add-user $directadmin_user $new_password $directadmin_usermail $hestia_package $directadmin_user $directadmin_user
-	if [ $? != 0 ]; then
-		tput setaf 2
-		echo "Stop Working... Cant create user...if is fresh install of Hestiacp try reboot or reopen session check bug https://bugs.vestacp.com/issues/138"
-		tput sgr0
-		delete_tmp
-		exit 4
-	fi
+	check_result "$E_EXISTS" "user $directadmin_user exists"
 fi
+
+echo "Generate random password for $directadmin_user and create Hestiacp Account ..."
+new_password=$(generate_password)
+# @TODO Checked till here
+$BIN/v-add-user $directadmin_user $new_password $directadmin_usermail $hestia_package
+if [ "$?" -ne 0 ]; then
+	echo "Unable to create user"
+	exit 1
+fi
+
+exit 0
 for sk_ex1 in crontab ticket user; do
 	mv backup/${sk_ex1}.conf backup/${sk_ex1}
 done
