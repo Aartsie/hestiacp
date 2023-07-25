@@ -40,6 +40,8 @@ fi
 debug=1
 hestia_package=default
 tmp_dir=tmp_dir
+time=$(echo "$time_n_date" | cut -f 1 -d \ )
+date=$(echo "$time_n_date" | cut -f 2 -d \ )
 b=backup
 d=domains
 
@@ -119,7 +121,7 @@ fi
 
 echo "Generate random password for $directadmin_user and create Hestiacp Account ..."
 new_password=$(generate_password)
-# $BIN/v-add-user $directadmin_user $new_password $directadmin_usermail $hestia_package
+$BIN/v-add-user $directadmin_user $new_password $directadmin_usermail $hestia_package
 if [ "$?" -ne 0 ]; then
 	echo "Unable to create user"
 	exit 1
@@ -148,6 +150,11 @@ function run_da_db() {
 			#Get the database name
 			db=$(grep db_collation backup/${da_db} | tr '&' '\n ' | grep SCHEMA_NAME | cut -d "=" -f 2)
 
+			tput setaf 2
+			echo " Create and restore ${db} "
+			tput sgr0
+			mysql -e "CREATE DATABASE $db"
+			mysql ${db} <backup/${db}.sql
 			#Get all the users of the database
 			while IFS= read -r line;
 			do
@@ -162,10 +169,16 @@ function run_da_db() {
 					echo "udb: $db_user"
 					echo "Password: ${md5}"
 
-						# echo "DB='$db' DBUSER='$userdb' MD5='$end_user_pass' HOST='localhost' TYPE='mysql' CHARSET='UTF8' U_DISK='0' SUSPENDED='no' TIME='$time' DATE='$data'" >> /usr/local/hestia/data/users/$directadmin_user/db.conf
+					echo "DB='$db' DBUSER='$db_user' MD5='$md5' HOST='localhost' TYPE='mysql' CHARSET='UTF8' U_DISK='0' SUSPENDED='no' TIME='$time' DATE='$data'" >> /usr/local/hestia/data/users/$directadmin_user/db.conf
 				fi
 
 			done < "backup/${da_db}"
+
+			# Leave hestia restore passwords and create users
+			tput setaf 2
+			echo "Rebuild databases files for $directadmin_user"
+			tput sgr0
+			$BIN/v-rebuild-databases $directadmin_user
 
 			
 			# grep -w $db server_dbs
@@ -182,8 +195,6 @@ function run_da_db() {
 			# fi
 		fi
 	done
-	echo "Fix passwords and users"
-	$BIN/v-rebuild-databases $directadmin_user
 }
 
 if [[ -z $da_db_list ]]; then
