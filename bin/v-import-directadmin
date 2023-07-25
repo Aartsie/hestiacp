@@ -94,12 +94,16 @@ if file $backup_file | grep -q -c "gzip compressed data,"; then
 		echo "Backup extracted whitout errors..."
 		tput sgr0
 	else
+		tput setaf 1
 		echo "Error on backup extraction, check your file, try extract it manually"
+		tput sgr0
 		delete_tmp
 		exit 1
 	fi
 else
+	tput setaf 1
 	echo "Error 3 not-gzip - no standard gziped backup provided of file not installed ( Try yum install file, or apt-get install file )"
+	tput sgr0
 	delete_tmp
 	exit 3
 fi
@@ -123,7 +127,9 @@ echo "Generate random password for $directadmin_user and create Hestiacp Account
 new_password=$(generate_password)
 $BIN/v-add-user $directadmin_user $new_password $directadmin_usermail $hestia_package
 if [ "$?" -ne 0 ]; then
-	echo "Unable to create user"
+	tput setaf 1
+	echo "Error: Unable to create user"
+	tput sgr0
 	exit 1
 fi
 
@@ -181,20 +187,6 @@ function run_da_db() {
 				echo "Rebuild databases files for $directadmin_user"
 				tput sgr0
 				$BIN/v-rebuild-databases $directadmin_user
-
-				
-				# grep -w $db server_dbs
-				# if [ $? == "1" ]; then
-				# 	tput setaf 2
-				# 	echo " Create and restore ${db} "
-				# 	tput sgr0
-				# 	mysql -e "CREATE DATABASE $db"
-				# 	mysql ${db} <backup/${db}.sql
-				# 	echo "Add $db to vestacp"
-				# 	echo "DB='$db' DBUSER='$userdb' MD5='$md5' HOST='localhost' TYPE='mysql' CHARSET='UTF8' U_DISK='0' SUSPENDED='no' TIME='$TIME' DATE='$DATE'" >>/usr/local/vesta/data/users/${directadmin_user}/db.conf
-				# else
-				# 	echo "Error: Cant restore database $db alredy exists in mysql server"
-				# fi
 			fi
 		else
 			tput setaf 1
