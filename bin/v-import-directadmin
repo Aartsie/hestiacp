@@ -23,7 +23,7 @@ source_conf "$HESTIA/conf/hestia.conf"
 
 # Turn this to 1 if you want get domains and paths from apache_owened_list
 # Turn int to 2 if you want to get domains dir "domains" and set public_html as default
-sk_get_dom=1
+
 if [ ! -e /usr/bin/rsync ] || [ ! -e /usr/bin/file ]; then
 	echo "#######################################"
 	echo "rsync not installed, try install it"
@@ -38,6 +38,7 @@ if [ ! -e /usr/bin/rsync ] || [ ! -e /usr/bin/file ]; then
 fi
 # Put this to 0 if you want use bash -x to debug it
 debug=1
+get_dom=1
 hestia_package=default
 tmp_dir=tmp_dir
 time=$(echo "$time_n_date" | cut -f 1 -d \ )
@@ -67,6 +68,12 @@ delete_tmp() {
 	echo "Removing tmp files"
 	rm -rf /root/${tmp_dir}
 }
+
+tput setaf 3
+echo "#######################################"
+echo "# START WITH IMPORT "
+echo "#######################################"
+tput sgr0
 
 tput setaf 2
 echo "Checking provided file..."
@@ -133,7 +140,11 @@ if [ "$?" -ne 0 ]; then
 	exit 1
 fi
 
-
+tput setaf 3
+echo "#######################################"
+echo "# DATABASE "
+echo "#######################################"
+tput sgr0
 
 # Restore databases
 mysql -e "SET GLOBAL max_allowed_packet=1073741824;"
@@ -205,6 +216,12 @@ fi
 delete_tmp
 exit 0
 
+tput setaf 3
+echo "#######################################"
+echo "# DOMAINS "
+echo "#######################################"
+tput sgr0
+
 # Start whit domains
 tput setaf 2
 echo "Start Whit Domains"
@@ -256,6 +273,11 @@ for sk_da_dom in $sk_da_domain_list; do
 done
 echo " "
 echo "Domains restored!"
+tput setaf 3
+echo "#######################################"
+echo "# E-MAIL "
+echo "#######################################"
+tput sgr0
 tput setaf 2
 echo "Start restoring mails"
 tput sgr0
