@@ -248,10 +248,12 @@ for directadmin_domain in $directadmin_domain_list; do
 				public_sync_count=$(($public_sync_count + 1))
 				echo -en "-- $public_sync_count restored files\r"
 			done
+
+			chown ${directadmin_user}:${directadmin_user} -R /home/${directadmin_user}/web/${directadmin_domain}/public_html
+			chmod 751 /home/${directadmin_user}/web/${directadmin_domain}/public_html
 		
-		if [[ -L "domains/${directadmin_domain}/private_html/" && -d "domains/${directadmin_domain}/private_html/" ]]; then
-			echo "private_html is a symlink to public_html"
-			ln -s /home/${directadmin_user}/web/${directadmin_domain}/public_html /home/${directadmin_user}/web/${directadmin_domain}/private
+		if [[ -L "domains/${directadmin_domain}/private_html" && -d "domains/${directadmin_domain}/private_html" ]]; then
+			echo "private_html is a symlink to public_html so we don't need to copy it."
 		else
 			private_sync_count=0
 			
@@ -260,19 +262,16 @@ for directadmin_domain in $directadmin_domain_list; do
 					private_sync_count=$(($private_sync_count + 1))
 					echo -en "-- $private_sync_count restored files\r"
 				done
+			chown ${directadmin_user}:${directadmin_user} -R /home/${directadmin_user}/web/${directadmin_domain}/private
+			chmod 751 /home/${directadmin_user}/web/${directadmin_domain}/private
 		fi
-
-		chown ${directadmin_user}:${directadmin_user} -R /home/${directadmin_user}/web/${directadmin_domain}/public_html
-		chmod 751 /home/${directadmin_user}/web/${directadmin_domain}/public_html
-		chown ${directadmin_user}:${directadmin_user} -R /home/${directadmin_user}/web/${directadmin_domain}/private
-		chmod 751 /home/${directadmin_user}/web/${directadmin_domain}/private
 	else
 		echo "Ups.. cant restore or add domain: $directadmin_domain"
 	fi
 done
 echo " "
 echo "Domains restored!"
-delete_tmp
+
 exit 0
 tput setaf 3
 echo "#######################################"
