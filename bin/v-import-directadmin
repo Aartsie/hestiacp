@@ -281,42 +281,42 @@ tput sgr0
 tput setaf 2
 echo "Start restoring mails"
 tput sgr0
-function sk_da_restore_imap_pass() {
+function da_restore_imap_pass() {
 	if [ -d /etc/exim ]; then
 		EXIM=/etc/exim
 	else
 		EXIM=/etc/exim4
 	fi
-	sk_actual_pass=$(grep -w $1 ${EXIM}/domains/$2/passwd | tr '}' ' ' | tr ':' ' ' | cut -d " " -f 3)
-	sk_da_orig_pass=$(grep -w $1 ${b}/$2/email/passwd | tr ':' ' ' | cut -d " " -f2)
-	replace "${sk_actual_pass}" "${sk_da_orig_pass}" -- ${EXIM}/domains/$2/passwd
+	actual_pass=$(grep -w $1 ${EXIM}/domains/$2/passwd | tr '}' ' ' | tr ':' ' ' | cut -d " " -f 3)
+	da_orig_pass=$(grep -w $1 ${b}/$2/email/passwd | tr ':' ' ' | cut -d " " -f2)
+	replace "${actual_pass}" "${da_orig_pass}" -- ${EXIM}/domains/$2/passwd
 	echo "Password for $1@$2 restored"
-	#################
-	# fix vesta needed
 }
-if [ -e sk_restored_domains ]; then
-	cat sk_restored_domains | while read sk_da_mail_domain; do
-		if [ "$(ls -A ${b}/${sk_da_mail_domain}/email/data/imap/)" ]; then
-			tput setaf 2
-			echo "Found Imap for ${sk_da_mail_domain}"
-			tput sgr0
-			ls -1 ${b}/${sk_da_mail_domain}/email/data/imap/ | while read sk_da_imap; do
-				$BIN/v-add-mail-account $directadmin_user $sk_da_mail_domain $sk_da_imap temp
-				if [ "$debug" != 0 ]; then
-					rsync -av ${b}/${sk_da_mail_domain}/email/data/imap/${sk_da_imap}/Maildir/ /home/${directadmin_user}/mail/${sk_da_mail_domain}/${sk_da_imap} 2>&1 |
-						while read backup_file_dm; do
-							sk_sync=$((sk_sync + 1))
-							echo -en "-- $sk_sync restored files\r"
-						done
-					echo " "
-				else
-					rsync ${b}/${sk_da_mail_domain}/email/data/imap/${sk_da_imap}/Maildir/ /home/${directadmin_user}/mail/${sk_da_mail_domain}/${sk_da_imap}
-				fi
-				chown ${directadmin_user}:mail -R /home/${directadmin_user}/mail/${sk_da_mail_domain}/${sk_da_imap}
-				sk_da_restore_imap_pass $sk_da_imap $sk_da_mail_domain
-			done
+if [ -e restored_domains ]; then
+	cat restored_domains | while read da_mail_domain; do
+	echo ${b}
+	echo "===="
+		# if [ "$(ls -A ${b}/${da_mail_domain}/email/data/imap/)" ]; then
+		# 	tput setaf 2
+		# 	echo "Found Imap for ${da_mail_domain}"
+		# 	tput sgr0
+		# 	ls -1 ${b}/${da_mail_domain}/email/data/imap/ | while read da_imap; do
+		# 		$BIN/v-add-mail-account $directadmin_user $da_mail_domain $da_imap temp
+		# 		if [ "$debug" != 0 ]; then
+		# 			rsync -av ${b}/${da_mail_domain}/email/data/imap/${da_imap}/Maildir/ /home/${directadmin_user}/mail/${da_mail_domain}/${da_imap} 2>&1 |
+		# 				while read backup_file_dm; do
+		# 					sk_sync=$((sk_sync + 1))
+		# 					echo -en "-- $sk_sync restored files\r"
+		# 				done
+		# 			echo " "
+		# 		else
+		# 			rsync ${b}/${da_mail_domain}/email/data/imap/${da_imap}/Maildir/ /home/${directadmin_user}/mail/${da_mail_domain}/${da_imap}
+		# 		fi
+		# 		chown ${directadmin_user}:mail -R /home/${directadmin_user}/mail/${da_mail_domain}/${da_imap}
+		# 		da_restore_imap_pass $da_imap $da_mail_domain
+		# 	done
 
-		fi
+		# fi
 	done
 fi
 delete_tmp
