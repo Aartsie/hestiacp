@@ -44,8 +44,8 @@ hestia_package=default
 tmp_dir=tmp_dir
 time=$(echo "$time_n_date" | cut -f 1 -d \ )
 date=$(echo "$time_n_date" | cut -f 2 -d \ )
-b=backup
-d=domains
+# b=backup
+# d=domains
 
 if [ -f "$1" ]; then
 	directadmin_backup="$1"
@@ -224,7 +224,7 @@ tput sgr0
 
 # Start whit domains
 tput setaf 2
-echo "Start Whit Domains"
+echo "Start with domains"
 tput sgr0
 directadmin_domain_list=$(ls -1 domains/)
 for directadmin_domain in $directadmin_domain_list; do
@@ -269,10 +269,8 @@ for directadmin_domain in $directadmin_domain_list; do
 		echo "Ups.. cant restore or add domain: $directadmin_domain"
 	fi
 done
-echo " "
 echo "Domains restored!"
 
-exit 0
 tput setaf 3
 echo "#######################################"
 echo "# E-MAIL "
@@ -288,39 +286,44 @@ function da_restore_imap_pass() {
 		EXIM=/etc/exim4
 	fi
 	actual_pass=$(grep -w $1 ${EXIM}/domains/$2/passwd | tr '}' ' ' | tr ':' ' ' | cut -d " " -f 3)
-	da_orig_pass=$(grep -w $1 ${b}/$2/email/passwd | tr ':' ' ' | cut -d " " -f2)
+	da_orig_pass=$(grep -w $1 backup/$2/email/passwd | tr ':' ' ' | cut -d " " -f2)
 	replace "${actual_pass}" "${da_orig_pass}" -- ${EXIM}/domains/$2/passwd
 	echo "Password for $1@$2 restored"
 }
+echo cat restored_domains
 if [ -e restored_domains ]; then
 	cat restored_domains | while read da_mail_domain; do
-	echo ${b}
-	echo "===="
-		# if [ "$(ls -A ${b}/${da_mail_domain}/email/data/imap/)" ]; then
-		# 	tput setaf 2
-		# 	echo "Found Imap for ${da_mail_domain}"
-		# 	tput sgr0
-		# 	ls -1 ${b}/${da_mail_domain}/email/data/imap/ | while read da_imap; do
-		# 		$BIN/v-add-mail-account $directadmin_user $da_mail_domain $da_imap temp
-		# 		if [ "$debug" != 0 ]; then
-		# 			rsync -av ${b}/${da_mail_domain}/email/data/imap/${da_imap}/Maildir/ /home/${directadmin_user}/mail/${da_mail_domain}/${da_imap} 2>&1 |
-		# 				while read backup_file_dm; do
-		# 					sk_sync=$((sk_sync + 1))
-		# 					echo -en "-- $sk_sync restored files\r"
-		# 				done
-		# 			echo " "
-		# 		else
-		# 			rsync ${b}/${da_mail_domain}/email/data/imap/${da_imap}/Maildir/ /home/${directadmin_user}/mail/${da_mail_domain}/${da_imap}
-		# 		fi
-		# 		chown ${directadmin_user}:mail -R /home/${directadmin_user}/mail/${da_mail_domain}/${da_imap}
-		# 		da_restore_imap_pass $da_imap $da_mail_domain
-		# 	done
-
-		# fi
+		if [ "$(ls -A imap/${da_mail_domain}/)" ]; then
+			tput setaf 2
+			echo "Found Imap for ${da_mail_domain}"
+			tput sgr0
+			ls -1 imap/${da_mail_domain}/ | while read da_imap; do
+			tmp_pass=$(generate_password)
+				$BIN/v-add-mail-account $directadmin_user $da_mail_domain $da_imap tmp_pass
+				if [ "$debug" != 0 ]; then
+					rsync -av imap/${da_mail_domain}/${da_imap}/Maildir/ /home/${directadmin_user}/mail/${da_mail_domain}/${da_imap} 2>&1 |
+						while read backup_file_dm; do
+							sk_sync=$((sk_sync + 1))
+							echo -en "-- $sk_sync restored files\r"
+						done
+					echo " "
+				else
+					rsync imap/${da_mail_domain}/${da_imap}/Maildir/ /home/${directadmin_user}/mail/${da_mail_domain}/${da_imap}
+				fi
+				chown ${directadmin_user}:mail -R /home/${directadmin_user}/mail/${da_mail_domain}/${da_imap}
+				find /home/$directadmin_user/mail/$da_mail_domain -type f -name 'dovecot*' -delete
+				da_restore_imap_pass $da_imap $da_mail_domain
+			done
+			
+			$BIN/v-rebuild-mail-domain $directadmin_user $da_mail_domain
+		fi
 	done
 fi
 delete_tmp
-echo "Account $directadmin_user restored"
-echo "Report eny errores in skamasle.com or in vesta forum ( official forum thread ) "
-echo "Or in twitter @skamasle"
-echo "This was powered by skamasle.com | Maks Usmanov"
+tput sgr0
+tput setaf 2
+echo "#######################################"
+echo "DirectAdmin account $directadmin_user restored"
+echo "Review your content and report any fail"
+tput sgr0
+exit
