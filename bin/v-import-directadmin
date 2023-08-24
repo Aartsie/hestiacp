@@ -280,14 +280,18 @@ tput setaf 2
 echo "Start restoring mails"
 tput sgr0
 function da_restore_imap_pass() {
-	if [ -d /etc/exim ]; then
-		EXIM=/etc/exim
-	else
-		EXIM=/etc/exim4
-	fi
-	actual_pass=$(grep -w $1 ${EXIM}/domains/$2/passwd | tr '}' ' ' | tr ':' ' ' | cut -d " " -f 3)
+	# if [ -d /etc/exim ]; then
+	# 	EXIM=/etc/exim
+	# else
+	# 	EXIM=/etc/exim4
+	# fi
+	# actual_pass=$(grep -w $1 ${EXIM}/domains/$2/passwd | tr '}' ' ' | tr ':' ' ' | cut -d " " -f 3)
 	da_orig_pass=$(grep -w $1 backup/$2/email/passwd | tr ':' ' ' | cut -d " " -f2)
-	replace "${actual_pass}" "${da_orig_pass}" -- ${EXIM}/domains/$2/passwd
+	echo $da_orig_pass
+	update_object_value "${3}/mail/${2}" 'ACCOUNT' "${1}" '$MD5' "$da_orig_pass"
+	# replace "${actual_pass}" "${da_orig_pass}" -- ${EXIM}/domains/$2/passwd
+	rsync backup/${2}/email/passwd /home/${1}/conf/mail/${2}/passwd
+	# chown -R dovecot:mail /home/${1}/conf/mail/${2}/passwd
 	echo "Password for $1@$2 restored"
 }
 echo cat restored_domains
@@ -312,7 +316,7 @@ if [ -e restored_domains ]; then
 				fi
 				chown ${directadmin_user}:mail -R /home/${directadmin_user}/mail/${da_mail_domain}/${da_imap}
 				find /home/$directadmin_user/mail/$da_mail_domain -type f -name 'dovecot*' -delete
-				da_restore_imap_pass $da_imap $da_mail_domain
+				da_restore_imap_pass $da_imap $da_mail_domain $directadmin_user
 			done
 			
 			$BIN/v-rebuild-mail-domain $directadmin_user $da_mail_domain
