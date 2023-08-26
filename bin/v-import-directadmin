@@ -286,11 +286,13 @@ function da_restore_imap_pass() {
 	# 	EXIM=/etc/exim4
 	# fi
 	# actual_pass=$(grep -w $1 ${EXIM}/domains/$2/passwd | tr '}' ' ' | tr ':' ' ' | cut -d " " -f 3)
+	#DirectAdmin passw is SHA512-CRYPT
 	da_orig_pass=$(grep -w $1 backup/$2/email/passwd | tr ':' ' ' | cut -d " " -f2)
-	echo $da_orig_pass
-	update_object_value "${3}/mail/${2}" 'ACCOUNT' "${1}" '$MD5' "$da_orig_pass"
+	echo ${da_orig_pass}
+	USER_DATA=$HESTIA/data/users/${3}/
+	update_object_value "mail/${2}" 'ACCOUNT' "${1}" '$MD5' "{SHA512-CRYPT}$da_orig_pass"
 	# replace "${actual_pass}" "${da_orig_pass}" -- ${EXIM}/domains/$2/passwd
-	rsync backup/${2}/email/passwd /home/${1}/conf/mail/${2}/passwd
+	# rsync backup/${2}/email/passwd /home/${1}/conf/mail/${2}/passwd
 	# chown -R dovecot:mail /home/${1}/conf/mail/${2}/passwd
 	echo "Password for $1@$2 restored"
 }
