@@ -1,8 +1,7 @@
 #!/bin/bash
 # info: Import DirectAdmin backup to a new user
-# options: BACKUP [MX]
 #
-# example: v-import-directadmin /backup/backup.tar.gz yes
+# example: v-import-directadmin /backup/backup.tar.gz
 #
 # Based on sk-da-importer
 # Credits: Maks Usmanov (skamasle) and contributors:
@@ -151,7 +150,7 @@ tput sgr0
 mysql -e "SET GLOBAL max_allowed_packet=1073741824;"
 # start whit databases
 tput setaf 2
-echo "Start Whit Databases"
+echo "Start with databases"
 tput sgr0
 
 echo "Get local databases"
@@ -211,7 +210,7 @@ function run_da_db() {
 if [[ -z $da_db_list ]]; then
 	echo "No database found"
 else
-	# run_da_db
+	run_da_db
 	echo "Run"
 fi
 
