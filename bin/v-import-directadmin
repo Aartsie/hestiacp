@@ -36,33 +36,21 @@ if [ ! -e /usr/bin/rsync ] || [ ! -e /usr/bin/file ]; then
 fi
 # Put this to 0 if you want use bash -x to debug it
 debug=1
-# Turn this to 1 if you want get domains and paths from apache_owened_list
-# Turn int to 2 if you want to get domains dir "domains" and set public_html as default
-get_domains_method=2
 hestia_package=default
-tmp_dir=tmp_dir
+tmp_dir='tmp_dir_da_backup'
 time=$(echo "$time_n_date" | cut -f 1 -d \ )
 date=$(echo "$time_n_date" | cut -f 2 -d \ )
-# b=backup
-# d=domains
 
 if [ -f "$1" ]; then
-	directadmin_backup="$1"
+	backup_file="$1"
 fi
-if [ -n "$2" ]; then
-	mx="$2"
-fi
+
 if [ -z "$BACKUP_TEMP" ]; then
 	BACKUP_TEMP=$BACKUP
 else
 	echo "File does not exists"
 	exit 1
 fi
-
-# Creating temporary directory
-tmpdir=$(mktemp -p "$BACKUP_TEMP" -d)
-
-backup_file=$1
 
 delete_tmp() {
 	echo "Removing tmp files"
@@ -148,7 +136,7 @@ tput sgr0
 
 # Restore databases
 mysql -e "SET GLOBAL max_allowed_packet=1073741824;"
-# start whit databases
+# start with databases
 tput setaf 2
 echo "Start with databases"
 tput sgr0
@@ -158,9 +146,7 @@ mysql -e "SHOW DATABASES" >server_dbs
 da_db_list=$(ls -1 backup/ | grep ".conf")
 function run_da_db() {
 	for da_db in $da_db_list; do
-		
-		# Substring expresion -5: substring expression < 0
-		# userdb=$(echo $da_db_u |sed "s/.conf//")
+
 		database_name=${da_db::-5}
 		grep -w $database_name server_dbs
 		if [ $? == "1" ]; then
@@ -183,7 +169,7 @@ function run_da_db() {
 
 						db_user=$(echo $selectdb_line | tr '&' '\n ' | grep ${directadmin_user} | cut -d "=" -f 1)
 						md5=$(echo $selectdb_line | tr '&' '\n ' | grep passwd | cut -d "=" -f 2)
-						
+
 						echo "DB: $db"
 						echo "udb: $db_user"
 						echo "Password: ${md5}"
@@ -221,7 +207,7 @@ echo "# DOMAINS "
 echo "#######################################"
 tput sgr0
 
-# Start whit domains
+# Start with domains
 tput setaf 2
 echo "Start with domains"
 tput sgr0
@@ -250,12 +236,12 @@ for directadmin_domain in $directadmin_domain_list; do
 
 			chown ${directadmin_user}:${directadmin_user} -R /home/${directadmin_user}/web/${directadmin_domain}/public_html
 			chmod 751 /home/${directadmin_user}/web/${directadmin_domain}/public_html
-		
+
 		if [[ -L "domains/${directadmin_domain}/private_html" && -d "domains/${directadmin_domain}/private_html" ]]; then
 			echo "private_html is a symlink to public_html so we don't need to copy it."
 		else
 			private_sync_count=0
-			
+
 			rsync -av domains/${directadmin_domain}/private_html/ /home/$directadmin_user/web/$directadmin_domain/private 2>&1 \
 				| while read file_dm; do
 					private_sync_count=$(($private_sync_count + 1))
@@ -279,20 +265,11 @@ tput setaf 2
 echo "Start restoring mails"
 tput sgr0
 function da_restore_imap_pass() {
-	# if [ -d /etc/exim ]; then
-	# 	EXIM=/etc/exim
-	# else
-	# 	EXIM=/etc/exim4
-	# fi
-	# actual_pass=$(grep -w $1 ${EXIM}/domains/$2/passwd | tr '}' ' ' | tr ':' ' ' | cut -d " " -f 3)
 	#DirectAdmin passw is SHA512-CRYPT
 	da_orig_pass=$(grep -w $1 backup/$2/email/passwd | tr ':' ' ' | cut -d " " -f2)
 	echo ${da_orig_pass}
 	USER_DATA=$HESTIA/data/users/${3}/
 	update_object_value "mail/${2}" 'ACCOUNT' "${1}" '$MD5' "{SHA512-CRYPT}$da_orig_pass"
-	# replace "${actual_pass}" "${da_orig_pass}" -- ${EXIM}/domains/$2/passwd
-	# rsync backup/${2}/email/passwd /home/${1}/conf/mail/${2}/passwd
-	# chown -R dovecot:mail /home/${1}/conf/mail/${2}/passwd
 	echo "Password for $1@$2 restored"
 }
 echo cat restored_domains
@@ -319,7 +296,7 @@ if [ -e restored_domains ]; then
 				find /home/$directadmin_user/mail/$da_mail_domain -type f -name 'dovecot*' -delete
 				da_restore_imap_pass $da_imap $da_mail_domain $directadmin_user
 			done
-			
+
 			$BIN/v-rebuild-mail-domain $directadmin_user $da_mail_domain
 		fi
 	done
